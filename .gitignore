@@ -15,3 +15,8 @@
 *.exe
 *.out
 *.app
+
+# Temporary editor files
+.swp
+.c~
+.h~
