@@ -20,6 +20,3 @@
 *.swp
 *.c~
 *.h~
-
-# The build directory
-build/
