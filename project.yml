@@ -9,7 +9,7 @@
   :test_file_prefix: test_
 
 :release_build:
-  :output: flash.bin
+  :output: flash.elf
   :use_assembly: FALSE
 
 :environment:

@@ -15,9 +15,11 @@ unsigned int *vec_table[4] __attribute__ ((section("vectors"))) = {
 int main(void)
 {
     int i = 0;
+    int j = 1;
     for(;;)
     {
         i++;
+        j++;
     }
 }
 
