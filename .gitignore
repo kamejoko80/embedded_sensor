@@ -17,6 +17,9 @@
 *.app
 
 # Temporary editor files
-.swp
-.c~
-.h~
+*.swp
+*.c~
+*.h~
+
+# The build directory
+build/
