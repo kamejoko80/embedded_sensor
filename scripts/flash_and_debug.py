@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import sys
 import telnetlib
 import subprocess
 import signal
@@ -15,30 +14,36 @@ import time
 ###############################################################
 
 ###############################################################
-# Set up an override to send a ctrl-c to GDB
+# We need to be able to send a SIGTERM (ctrl-c) to GDB
+# without killing openocd or this script. Set up a custom
+# signal handler here that essentially ignores SIGTERM
 ###############################################################
 def signal_handler(signal, frame):
-    # Close down openocd
-    open_ocd.terminate()
-    open_ocd.wait()
-    sys.exit(0)
-
-signal.signal(signal.SIGINT, signal_handler)
+    pass # do nothing
 
 ###############################################################
-# Start up openocd in the background
+# Start up the openocd thread
 ###############################################################
-open_ocd = subprocess.Popen(["openocd"])
 
+# We need gdb to respond to a SIGINT (ctrl-c), but by default,
+# that will cause every other child process to die, including 
+# openocd. Disable sigint, then re-enable it after the child 
+# spawns. The child inherits the current state of signal 
+# handlers.
+signal.signal(signal.SIGINT, signal.SIG_IGN)
+openocd = subprocess.Popen(["openocd"])
 time.sleep(2) # Wait for this to start up
+
+# Set up a custom signal handler so that SIGINT doesn't kill
+# this script
+signal.signal(signal.SIGINT, signal_handler)
 
 ###############################################################
 # Flash the new image to the development board
 ###############################################################
 
 # Create the flashable image
-create_flash = subprocess.Popen(["arm-none-eabi-objcopy", "-Obinary", "build/artifacts/release/flash.elf", "build/artifacts/release/flash.bin"])
-create_flash.wait()
+subprocess.call(["arm-none-eabi-objcopy", "-Obinary", "build/artifacts/release/flash.elf", "build/artifacts/release/flash.bin"])
 
 # Flash the image
 tn = telnetlib.Telnet("127.0.0.1", "4444")
@@ -60,14 +65,13 @@ tn.close()
 # Start the gdb session
 ###############################################################
 
-#time.sleep(2)
-#gdb_proc = subprocess.Popen(["arm-none-eabi-gdb", "-ex", "target remote localhost:3333", "build/artifacts/release/flash.elf", "-ex", "set remote hardware-breakpoint-limit 6", "-ex", "set remote hardware-watchpoint-limit 4", "-ex", "cont"])
-#time.sleep(1)
-#gdb_proc.send_signal(signal.SIGINT)
-print "\nRun the following command in another terminal to start the GDB session"
-print "arm-none-eabi-gdb -ex \"target remote localhost:3333\" -ex \"set remote hardware-breakpoint-limit 6\" -ex \"set remote hardware-watchpoint-limit 4\" build/artifacts/release/flash.elf"
+time.sleep(2)
+gdb_proc = subprocess.Popen(["arm-none-eabi-gdb", "-ex", "target remote localhost:3333", "build/artifacts/release/flash.elf", "-ex", "set remote hardware-breakpoint-limit 6", "-ex", "set remote hardware-watchpoint-limit 4"])
 
-print "\nPress ctrl-c to exit"
+# Spin until GDB is exited
+while gdb_proc.poll() == None:
+    time.sleep(1)
 
-signal.pause() # Wait forever
+# Gracefully exit openocd
+openocd.terminate()
 
